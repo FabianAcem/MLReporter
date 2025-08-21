@@ -1,0 +1,11 @@
+flask
+scikit-learn
+pandas
+numpy
+matplotlib
+spacy
+fasttext
+gensim
+bs4
+nltk
+langdetect
