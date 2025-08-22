@@ -1,117 +1,119 @@
-# scheduler_app.py
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 import os
 import json
 import smtplib
+import pickle
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import pickle # Neu: Importiere pickle
 
-# Importiere deine notwendigen Funktionen
-from Clustering import ConvertCurrent # Diese Funktion muss angepasst werden
-from Vectorize import lade_json # Zum Laden der vorgeschlagenen Artikel
+# --- Core Project Imports ---
+# These functions handle the main logic of the application.
+from Clustering import ConvertCurrent
+from Vectorize import lade_json
+from generate_static_site import generate_static_site
 
-# E-Mail-Konfiguration
-EMAIL_ADDRESS = 'Fabian.Acem@kds-software.com'
-EMAIL_PASSWORD = 'Nelzu2410+'
+# --- Configuration ---
+# It is strongly recommended to use environment variables for sensitive data.
+# The GitHub Actions workflow will set these variables from repository secrets.
+EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+# The receiver email(s) can be hardcoded if they are not sensitive.
 RECEIVER_EMAILS = ['Fabian.Acem@kds-software.com']
-WEBSITE_LINK = 'http://127.0.0.1:5000'
 
-# Basis-Datenpfad (wie in app.py und Learning.py)
-BASE_DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Data')
+# This should be the URL where you host your static site (e.g., GitHub Pages).
+# Replace <YOUR_USERNAME> and <YOUR_REPONAME> with your actual GitHub details.
+WEBSITE_LINK = 'https://<YOUR_USERNAME>.github.io/<YOUR_REPONAME>/'
 
-# --- MODELL EINMALIG LADEN FÜR DEN SCHEDULER ---
-loaded_ml_model_for_scheduler = None
-try:
-    model_filepath = os.path.join(BASE_DATA_PATH, "RF_best_model.pkl")
-    with open(model_filepath, "rb") as f:
-        loaded_ml_model_for_scheduler = pickle.load(f)
-    print("Machine Learning Modell für den Scheduler erfolgreich geladen.")
-except FileNotFoundError:
-    print(f"Fehler: RF_best_model.pkl wurde nicht gefunden unter {model_filepath}")
-    print("Bitte stellen Sie sicher, dass das Modell trainiert und im 'Data'-Ordner gespeichert wurde.")
-except Exception as e:
-    print(f"Fehler beim Laden des Machine Learning Modells für den Scheduler: {e}")
-# --- ENDE MODELL LADEN ---
 
-# In scheduler_app.py
+def def run_weekly_workflow():
+    """
+    Executes the entire weekly workflow:
+    1. Loads the ML model.
+    2. Fetches and processes new articles.
+    3. Makes predictions.
+    4. Generates a static HTML website.
+    5. Sends an email notification with a link to the site.
+    """
+    print("--- Starting Weekly Workflow ---")
 
-# ... (existing imports and definitions) ...
+    # --- 1. Load the ML Model ---
+    base_data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Data')
+    model_path = os.path.join(base_data_path, "RF_best_model.pkl")
+    try:
+        with open(model_path, "rb") as f:
+            ml_model = pickle.load(f)
+        print("✅ Machine Learning model loaded successfully.")
+    except Exception as e:
+        print(f"❌ Fatal Error: Could not load the machine learning model from {model_path}. Error: {e}")
+        return # Exit if the model isn't available
 
-def send_email_with_articles():
-    """Sendet eine E-Mail mit dem Link zur Artikelauswahl."""
+    # --- 2. Fetch, Process, and Predict ---
+    print("\nStep 2: Processing new articles and generating predictions...")
+    try:
+        # This function handles fetching, processing, and saving the predictions.
+        # We pass the pre-loaded model to avoid retraining.
+        ConvertCurrent(model=ml_model)
+        print("✅ Article processing and prediction complete.")
+    except Exception as e:
+        print(f"❌ Error during article processing and prediction. Error: {e}")
+        # We can still try to generate the site and send an email if predictions exist from a previous run.
     
-    if loaded_ml_model_for_scheduler is None:
-        print("Modell ist nicht geladen. Überspringe Artikelverarbeitung und E-Mail-Versand.")
+    # --- 3. Generate Static Website ---
+    print("\nStep 3: Generating static HTML website...")
+    try:
+        generate_static_site()
+        print("✅ Static website generated successfully in the 'docs' directory.")
+    except Exception as e:
+        print(f"❌ Error generating the static site. Error: {e}")
+        # If site generation fails, there's no point in sending an email.
         return
 
-    print("Starte wöchentliche Artikelverarbeitung und Vorhersage...")
-    ConvertCurrent(model=loaded_ml_model_for_scheduler)
-    print("Artikelverarbeitung abgeschlossen.")
+    # --- 4. Send Email Notification ---
+    print("\nStep 4: Preparing and sending email notification...")
+    # Check for email credentials
+    if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
+        print("⚠️ Warning: EMAIL_ADDRESS or EMAIL_PASSWORD environment variables not set. Skipping email notification.")
+        return
 
-    # --- MODIFIZIERTER TEIL HIER ---
-    # Initialisiere MIMEMultipart VOR dem try-except Block
+    # Prepare email content
     msg = MIMEMultipart("alternative")
-    msg['Subject'] = "Deine neuen personalisierten Artikelvorschläge sind da! 🚀"
+    msg['Subject'] = "Your new personalized article recommendations are here! 🚀"
     msg['From'] = EMAIL_ADDRESS
     msg['To'] = ", ".join(RECEIVER_EMAILS)
-    # --- ENDE MODIFIZIERTER TEIL ---
 
+    # Get the number of suggested articles for the email body
     try:
-        suggested_ids = lade_json(os.path.join(BASE_DATA_PATH, "suggested_articles_for_web.json"))
+        suggestions_path = os.path.join(base_data_path, "suggested_articles_for_web.json")
+        suggested_ids = lade_json(suggestions_path)
         article_count = len(suggested_ids)
-    except FileNotFoundError:
+    except Exception:
         article_count = 0
-        print(f"Warnung: Datei '{os.path.join(BASE_DATA_PATH, 'suggested_articles_for_web.json')}' nicht gefunden. Artikelanzahl ist 0.")
-    except Exception as e:
-        article_count = 0
-        print(f"Warnung: Fehler beim Laden von suggested_articles_for_web.json: {e}. Artikelanzahl ist 0.")
 
+    text = f"Hello,\n\nYour {article_count} new personalized article suggestions are available!\n\nClick the link to view them:\n{WEBSITE_LINK}\n\nEnjoy reading!\n"
+    html = f"""    <html>
+      <body>
+        <p>Hello,</p>
+        <p>Your <strong>{article_count}</strong> new personalized article suggestions are available! 🚀</p>
+        <p>Click the button below to see your articles:</p>
+        <p><a href="{WEBSITE_LINK}" style=\"background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;\">View My Articles</a></p>
+        <p>Enjoy reading!</p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(text, 'plain'))
+    msg.attach(MIMEText(html, 'html'))
 
-    text = f"""Hallo,
-
-Deine neuen personalisierten Artikelvorschläge ({article_count} Artikel) sind verfügbar!
-
-Klicke auf den folgenden Link, um sie anzusehen und deine Favoriten zu markieren:
-{WEBSITE_LINK}
-
-Viel Spaß beim Lesen!
-
-Dein Newsletter-Team
-"""
-    html = f"""\
-<html>
-  <body>
-    <p>Hallo,</p>
-    <p>Deine neuen personalisierten Artikelvorschläge ({article_count} Artikel) sind da! 🚀</p>
-    <p>Klicke auf den folgenden Link, um sie anzusehen und deine Favoriten zu markieren:</p>
-    <p><a href="{WEBSITE_LINK}">Zu deinen Artikeln</a></p>
-    <p>Viel Spaß beim Lesen!</p>
-    <p>Dein Newsletter-Team</p>
-  </body>
-</html>
-"""
-    part1 = MIMEText(text, 'plain')
-    part2 = MIMEText(html, 'html')
-    msg.attach(part1)
-    msg.attach(part2)
-
+    # Send the email
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.sendmail(EMAIL_ADDRESS, RECEIVER_EMAILS, msg.as_string())
-        print("E-Mail erfolgreich gesendet!")
+        print(f"✅ Email successfully sent to {', '.join(RECEIVER_EMAILS)}!")
     except Exception as e:
-        print(f"Fehler beim Senden der E-Mail: {e}")
+        print(f"❌ Fatal Error: Failed to send email. Please check your credentials and SMTP settings. Error: {e}")
 
-# ... (restlicher scheduler_app.py code) ...
+    print("\n--- Weekly Workflow Finished ---")
+
 if __name__ == '__main__':
-    scheduler = BlockingScheduler()
-    scheduler.add_job(send_email_with_articles, IntervalTrigger(seconds=60), id='weekly_article_update') # Testzwecke
-    
-    print("Scheduler gestartet. Die E-Mail wird gemäß Plan gesendet.")
-    try:
-        scheduler.start()
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    # This script is designed to be run once by a scheduler like GitHub Actions.
+    # It will execute the entire workflow and then exit.
+    run_weekly_workflow()
