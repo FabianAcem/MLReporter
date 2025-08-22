@@ -319,8 +319,6 @@ def Basedata():
     SumAndAvrg(path)
     train_model()
     print("Basedata abgeschlossen: Modelle trainiert und gespeichert.")
-    
-Basedata()
 
 
 def save_starred_for_exclusion(article_ids):
@@ -416,20 +414,29 @@ def mark_as_starred_old_redundant(headers_param): # Um Namenskollision zu vermei
 # --- Steuerung des Skripts, wenn es direkt ausgeführt wird (z.B. für Initialisierung/Training) ---
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Clustering tasks")
+    parser = argparse.ArgumentParser(description="Clustering and data initialization tasks")
+    parser.add_argument("--init", action="store_true",
+                        help="Fetch base data and train all models. Run this only for initialization.")
     parser.add_argument("--fetch-and-cluster", action="store_true",
-                        help="Artikel aus Inoreader holen und clustern")
+                        help="Artikel aus Inoreader holen und clustern (placeholder)")
     parser.add_argument("--train", action="store_true",
                         help="ML-Modell trainieren (manuell)")
 
     args = parser.parse_args()
 
-    if args.fetch_and_cluster:
-        # Beispiel:
-        # articles = fetch_inoreader_articles(get_token())
-        # run_clustering_on_articles(articles)
-        print("[Done] fetch-and-cluster ausgeführt (füge hier deinen Code ein)")
+    if args.init:
+        print("--- Starting Full Initialization ---")
+        # The initialization process requires fetching data first, then processing and training.
+        getclusteringdata()
+        Basedata()
+        print("--- Full Initialization Complete ---")
+
+    if args.fetch_and-cluster:
+        # This is a placeholder from the original code.
+        # For a real implementation, one would call specific functions.
+        print("[Info] --fetch-and-cluster is a placeholder and has no action.")
 
     if args.train:
+        print("--- Starting Manual Model Training ---")
         train_model()
-        print("[Done] Training ausgeführt")
+        print("--- Manual Model Training Complete ---")
