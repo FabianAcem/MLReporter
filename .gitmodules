@@ -1,0 +1,3 @@
+[submodule "MLReporter"]
+	path = MLReporter
+	url = https://github.com/FabianAcem/MLReporter
