@@ -39,8 +39,8 @@ try:
     token = accesstoken_erneuern()
     headers = {
         "Authorization": f"Bearer {token}",
-        "AppId": "1000001959",
-        "AppKey": "rPeJRCeHO0dzYJmIutOmODqrB6DyuKsb",
+        "AppId": os.environ.get("INOREADER_APP_ID", "1000001959"),
+        "AppKey": os.environ.get("INOREADER_APP_KEY", "rPeJRCeHO0dzYJmIutOmODqrB6DyuKsb"),
     }
     print("API Headers in Clustering.py erfolgreich initialisiert.")
 except Exception as e:

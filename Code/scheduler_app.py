@@ -24,7 +24,7 @@ RECEIVER_EMAILS = ['Fabian.Acem@kds-software.com']
 WEBSITE_LINK = 'https://<YOUR_USERNAME>.github.io/<YOUR_REPONAME>/'
 
 
-def def run_weekly_workflow():
+def run_weekly_workflow():
     """
     Executes the entire weekly workflow:
     1. Loads the ML model.
