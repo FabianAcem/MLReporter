@@ -9,3 +9,4 @@ gensim
 bs4
 nltk
 langdetect
+jinja2

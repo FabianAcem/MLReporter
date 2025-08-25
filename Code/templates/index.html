@@ -86,26 +86,15 @@
     <div class="container">
         <h1>Deine personalisierten Artikelvorschläge ✨</h1>
 
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <ul class="flash-message">
-            {% for message in messages %}
-            <li>{{ message }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-        {% endwith %}
-
-        <form action="{{ url_for('submit_starred') }}" method="post">
+        <form action="{{ submit_url }}" method="post">
             {% if articles %}
             {% for article in articles %}
             <div class="article">
-                <h3>{{ article.title }}</h3>
+                <h3><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a></h3>
                 <p>{{ article.summary }}</p>
                 <p><strong>Quelle:</strong> {{ article.source }}</p>
                 <label>
-                    <input type="checkbox" name="selected_articles" value="{{ article.id }}"> Als "Später lesen"
-                    markieren
+                    <input type="checkbox" name="selected_articles" value="{{ article.id }}"> Als "Interessant" markieren
                 </label>
             </div>
             {% endfor %}
@@ -113,13 +102,9 @@
                 <button type="submit" class="btn">Ausgewählte Artikel markieren</button>
             </div>
             {% else %}
-            <p>Momentan keine Artikelvorschläge verfügbar.</p>
+            <p>Momentan keine Artikelvorschläge verfügbar. Bitte führen Sie den wöchentlichen Workflow aus, um neue Vorschläge zu generieren.</p>
             {% endif %}
         </form>
-
-        <div class="form-actions">
-            <a href="{{ url_for('request_new_predictions') }}" class="btn request-btn">Neue Vorschläge anfordern 🔄</a>
-        </div>
     </div>
 </body>
 

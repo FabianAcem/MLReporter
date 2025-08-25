@@ -54,17 +54,43 @@ def index():
 
 @app.route('/submit_starred', methods=['POST'])
 def submit_starred():
-    """Verarbeitet die vom Benutzer markierten Artikel."""
-    # ... (restlicher Code wie gehabt) ...
+    """
+    Verarbeitet die vom Benutzer auf der statischen Seite markierten Artikel.
+    Gibt eine einfache Bestätigungsseite zurück.
+    """
     selected_article_ids = request.form.getlist('selected_articles')
     
+    # Die URL der statischen Seite, zu der der Benutzer zurückkehren kann.
+    # Diese sollte in der Hosting-Umgebung als Umgebungsvariable konfiguriert werden.
+    static_site_url = os.environ.get('STATIC_SITE_URL', 'https://<YOUR_USERNAME>.github.io/<YOUR_REPONAME>/')
+
     if selected_article_ids:
-        mark_as_starred_inoreader(selected_article_ids)
-        flash(f"{len(selected_article_ids)} Artikel wurden erfolgreich als 'später lesen' markiert.")
+        try:
+            mark_as_starred_inoreader(selected_article_ids)
+            message = f"{len(selected_article_ids)} Artikel wurden erfolgreich als 'interessant' markiert."
+        except Exception as e:
+            message = f"Ein Fehler ist aufgetreten: {e}"
     else:
-        flash("Keine Artikel ausgewählt.")
+        message = "Keine Artikel ausgewählt."
         
-    return redirect(url_for('index'))
+    # Anstatt eines Redirects wird eine einfache HTML-Seite mit einer Bestätigung zurückgegeben.
+    return f"""
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <title>Bestätigung</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; text-align: center; padding-top: 50px; }}
+            a {{ color: #007bff; }}
+        </style>
+    </head>
+    <body>
+        <h1>{message}</h1>
+        <p><a href="{static_site_url}">Zurück zur Artikelliste</a></p>
+    </body>
+    </html>
+    """
 
 @app.route('/request_new_predictions')
 def request_new_predictions():

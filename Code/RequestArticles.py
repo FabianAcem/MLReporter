@@ -1,9 +1,13 @@
 import requests
 import json
 import time
+import os
 from datetime import datetime, timedelta
 
-token_datei = "/root/project/MLReporter/Data/token.json"
+# Pfad zur Token-Datei und anderen Daten relativ zum Skript-Verzeichnis
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "Data")
+token_datei = os.path.join(DATA_DIR, "token.json")
 
 
 def lade_token():
@@ -19,7 +23,7 @@ def speicher_token(data):
 def accesstoken_erneuern():
     tokenset = lade_token()
 
-    if time.time() * 1000 >= tokenset["token_expiry"]:
+    if time.time() * 1000 >= tokenset.get("token_expiry", 0):
         print("Token abgelaufen... neuer wird angefordert")
 
         url = "https://www.inoreader.com/oauth2/token"
@@ -179,5 +183,6 @@ def sammelArtikel():
     starredarticle = StarredArticleRequest(headers)
 
     alle_artikel = feedandtaggedArticles + starredarticle
-    with open("/root/project/MLReporter/Data/response.json", "w", encoding="utf-8") as fp:
+    output_path = os.path.join(DATA_DIR, "response.json")
+    with open(output_path, "w", encoding="utf-8") as fp:
         json.dump({"items": alle_artikel}, fp, indent=4, ensure_ascii=False)
